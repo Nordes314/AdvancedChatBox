@@ -17,6 +17,7 @@ import fi.dy.masa.malilib.config.options.ConfigBoolean;
 import fi.dy.masa.malilib.config.options.ConfigColor;
 import fi.dy.masa.malilib.config.options.ConfigInteger;
 import fi.dy.masa.malilib.config.options.ConfigString;
+import fi.dy.masa.malilib.config.options.ConfigStringList;
 import fi.dy.masa.malilib.util.FileUtils;
 import fi.dy.masa.malilib.util.JsonUtils;
 import fi.dy.masa.malilib.util.StringUtils;
@@ -27,7 +28,10 @@ import io.github.darkkronicle.advancedchatcore.config.ConfigStorage;
 import io.github.darkkronicle.advancedchatcore.config.SaveableConfig;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
@@ -63,10 +67,48 @@ public class ChatBoxConfigStorage implements IConfigHandler {
         public static final SaveableConfig<ConfigColor> AVAILABLE_SUGGESTION_COLOR = SaveableConfig
                 .fromConfig("availableSuggestionColor", new ConfigColor(translate("availablesuggestioncolor"),
                         "#FF969696", translate("info.availablesuggestioncolor")));
+        public static final SaveableConfig<ConfigStringList> COMMAND_SPELLCHECK_COMMANDS = SaveableConfig.fromConfig(
+                "commandSpellcheckCommands",
+                new ConfigStringList(translate("commandspellcheckcommands"),
+                        ImmutableList.of("msg", "tell", "w", "r", "reply", "me"),
+                        translate("info.commandspellcheckcommands")));
 
         public static final ImmutableList<SaveableConfig<? extends IConfigBase>> OPTIONS =
                 ImmutableList.of(HIGHLIGHT_COLOR, UNHIGHLIGHT_COLOR, BACKGROUND_COLOR, SUGGESTION_SIZE,
                         REMOVE_IDENTIFIER, PRUNE_PLAYER_SUGGESTIONS, AVAILABLE_SUGGESTION_COLOR);
+        public static final ImmutableList<SaveableConfig<? extends IConfigBase>> HIDDEN_OPTIONS =
+                ImmutableList.of(COMMAND_SPELLCHECK_COMMANDS);
+
+        public static List<String> getCommandSpellcheckCommands() {
+            return normalizeCommands(COMMAND_SPELLCHECK_COMMANDS.config.getStrings());
+        }
+
+        public static void setCommandSpellcheckCommands(List<String> commands) {
+            COMMAND_SPELLCHECK_COMMANDS.config.setStrings(normalizeCommands(commands));
+        }
+
+        public static String normalizeCommand(String command) {
+            String normalized = command.trim().toLowerCase(Locale.ROOT);
+            while (normalized.startsWith("/")) {
+                normalized = normalized.substring(1);
+            }
+            int namespaceIndex = normalized.lastIndexOf(':');
+            if (namespaceIndex >= 0 && namespaceIndex + 1 < normalized.length()) {
+                normalized = normalized.substring(namespaceIndex + 1);
+            }
+            return normalized;
+        }
+
+        private static List<String> normalizeCommands(List<String> commands) {
+            LinkedHashSet<String> normalized = new LinkedHashSet<>();
+            for (String command : commands) {
+                String normalizedCommand = normalizeCommand(command);
+                if (!normalizedCommand.isEmpty()) {
+                    normalized.add(normalizedCommand);
+                }
+            }
+            return new ArrayList<>(normalized);
+        }
     }
 
     public static class SpellChecker {
@@ -106,7 +148,9 @@ public class ChatBoxConfigStorage implements IConfigHandler {
                 JsonObject root = element.getAsJsonObject();
 
                 ConfigStorage.readOptions(root, General.NAME, (List<SaveableConfig<?>>) General.OPTIONS);
+                ConfigStorage.readOptions(root, General.NAME, (List<SaveableConfig<?>>) General.HIDDEN_OPTIONS);
                 ConfigStorage.readOptions(root, SpellChecker.NAME, (List<SaveableConfig<?>>) SpellChecker.OPTIONS);
+                General.setCommandSpellcheckCommands(General.COMMAND_SPELLCHECK_COMMANDS.config.getStrings());
 
                 ConfigStorage.applyRegistry(root.get(ChatFormatterRegistry.NAME), ChatFormatterRegistry.getInstance());
                 ConfigStorage.applyRegistry(root.get(ChatSuggestorRegistry.NAME), ChatSuggestorRegistry.getInstance());
@@ -122,7 +166,9 @@ public class ChatBoxConfigStorage implements IConfigHandler {
         if ((dir.exists() && dir.isDirectory()) || dir.mkdirs()) {
             JsonObject root = new JsonObject();
 
+            General.setCommandSpellcheckCommands(General.COMMAND_SPELLCHECK_COMMANDS.config.getStrings());
             ConfigStorage.writeOptions(root, General.NAME, (List<SaveableConfig<?>>) General.OPTIONS);
+            ConfigStorage.writeOptions(root, General.NAME, (List<SaveableConfig<?>>) General.HIDDEN_OPTIONS);
             ConfigStorage.writeOptions(root, SpellChecker.NAME, (List<SaveableConfig<?>>) SpellChecker.OPTIONS);
 
             root.add("config_version", new JsonPrimitive(CONFIG_VERSION));

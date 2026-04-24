@@ -58,6 +58,11 @@ public class GuiChatBoxConfig extends GuiConfigsBase {
     }
 
     @Override
+    protected void buildConfigSwitcher() {
+        // AdvancedChat already owns the top-level config navigation; this screen only needs its own tabs.
+    }
+
+    @Override
     public List<ConfigOptionWrapper> getConfigs() {
         List<SaveableConfig<? extends IConfigBase>> configs = ChatBoxConfigStorage.General.OPTIONS;
 

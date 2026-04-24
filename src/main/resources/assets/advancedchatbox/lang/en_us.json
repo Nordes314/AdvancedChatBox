@@ -1,6 +1,7 @@
 {
   "advancedchatbox.config.tab.general": "§dGeneral",
   "advancedchatbox.config.tab.spellchecker": "§6Spell Checker",
+  "advancedchatbox.config.tab.commandspellcheck": "Command Spell Check",
 
   "advancedchat.config.shortcutmenu.remove": "§cRemove",
   "advancedchat.gui.button.addshortcut": "§aAdd Shortcut",
@@ -9,6 +10,10 @@
   "advancedchatbox.screen.suggestors": "Suggestors",
   "advancedchatbox.screen.formatters": "Formatters",
   "advancedchatbox.config.button.config_suggestors": "Configure Suggestors",
+  "advancedchatbox.config.commandspellcheck.screen.name": "Command Spell Check",
+  "advancedchatbox.config.commandspellcheck.description": "Commands in this list allow spell check suggestions after the command name.",
+  "advancedchatbox.config.commandspellcheck.add": "\u00A7aAdd Command",
+  "advancedchatbox.config.commandspellcheck.remove": "\u00A7cRemove",
   "advancedchatbox.config.chatsuggestor.players": "Suggest Players",
   "advancedchatbox.config.chatsuggestor.info.players": "Whether or not §6player names§r are suggested in chat\nThese show up by pressing tab",
   "advancedchatbox.config.chatsuggestor.shortcut": "Suggest Shortcuts",
@@ -47,6 +52,8 @@
   "advancedchatbox.config.general.info.pruneplayersuggestions": "Whether or not §6non-real players§r, such as the fake players used in BungeeTabListPlus, are removed from the §dChatSuggestor",
   "advancedchatbox.config.general.availablesuggestioncolor": "Available Suggestion Color",
   "advancedchatbox.config.general.info.availablesuggestioncolor": "What color §6custom chat suggestors§r will show up as",
+  "advancedchatbox.config.general.commandspellcheckcommands": "Spell Check Commands",
+  "advancedchatbox.config.general.info.commandspellcheckcommands": "Commands where spell check should also run after the command name. Entries may be written with or without /, for example msg or /reply",
   "advancedchatbox.config.spellchecker.hovertext": "Spell Checker Hover Format",
   "advancedchatbox.config.spellchecker.info.hovertext": "The format of the text that appears when you hover your mouse over a suggested spelling change\n§b$1§r is the first part of the description, up to the suggested change\n§b$2§r is the actual spelling suggestion\n§b$3§r is any additional information that the spell checker may provide"
 }

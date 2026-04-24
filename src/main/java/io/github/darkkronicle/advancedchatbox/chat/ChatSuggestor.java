@@ -17,6 +17,7 @@ import com.mojang.brigadier.suggestion.Suggestion;
 import io.github.darkkronicle.advancedchatbox.config.ChatBoxConfigStorage;
 import io.github.darkkronicle.advancedchatbox.interfaces.IMessageSuggestor;
 import io.github.darkkronicle.advancedchatbox.registry.ChatSuggestorRegistry;
+import io.github.darkkronicle.advancedchatbox.suggester.SpellCheckSuggestor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,6 +41,7 @@ import net.minecraft.command.CommandSource;
 @Environment(EnvType.CLIENT)
 public class ChatSuggestor {
     private static final Pattern SPACE_PATTERN = Pattern.compile("(\\s+)");
+    private static final String PLAYER_SUGGESTOR = "players";
 
     /** Parsed command results */
     @Getter
@@ -91,7 +93,11 @@ public class ChatSuggestor {
 
     /** Update command suggestions */
     public void updateCommandSuggestions() {
-        updateCommandSuggestions(null);
+        updateCommandSuggestions(false, null);
+    }
+
+    public void updateCommandSuggestions(boolean includePlayerFallback) {
+        updateCommandSuggestions(includePlayerFallback, null);
     }
 
     /**
@@ -100,13 +106,122 @@ public class ChatSuggestor {
      * @param after Runnable to run after suggestions have completed
      */
     public void updateCommandSuggestions(Runnable after) {
+        updateCommandSuggestions(false, after);
+    }
+
+    public void updateCommandSuggestions(boolean includePlayerFallback, Runnable after) {
         allSuggestions = null;
         CommandDispatcher<ClientCommandSource> commandDispatcher = client.player.networkHandler.getCommandDispatcher();
         pendingSuggestions = commandDispatcher.getCompletionSuggestions(this.parse, getCursorIndex())
-                .thenApplyAsync(AdvancedSuggestions::fromSuggestions);
+                .thenApplyAsync(suggestions -> {
+                    AdvancedSuggestions vanillaSuggestions = AdvancedSuggestions.fromSuggestions(suggestions);
+                    AdvancedSuggestions commandSpellcheckSuggestions = getCommandSpellcheckSuggestions();
+                    if (!commandSpellcheckSuggestions.getSuggestions().isEmpty()) {
+                        return commandSpellcheckSuggestions;
+                    }
+                    if (!vanillaSuggestions.getSuggestions().isEmpty()) {
+                        return vanillaSuggestions;
+                    }
+                    return getCommandFallbackSuggestions(includePlayerFallback);
+                });
         if (after != null) {
             runAfterDone(after);
         }
+    }
+
+    public boolean updateCommandSpellcheckSuggestions() {
+        AdvancedSuggestions suggestions = getCommandSpellcheckSuggestions();
+        this.pendingSuggestions = CompletableFuture.completedFuture(suggestions);
+        return !suggestions.getSuggestions().isEmpty();
+    }
+
+    private AdvancedSuggestions getCommandSpellcheckSuggestions() {
+        String currentText = textField.getText();
+        String startToCursor = currentText.substring(0, getCursorIndex());
+        int wordIndex = getLastWord(startToCursor);
+        ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
+        addCommandSpellcheckSuggestions(currentText, suggestions);
+        this.allSuggestions = suggestions;
+        return suggestMatching(wordIndex, startToCursor, suggestions, false).join();
+    }
+
+    private AdvancedSuggestions getCommandFallbackSuggestions(boolean includePlayerFallback) {
+        String currentText = textField.getText();
+        String startToCursor = currentText.substring(0, getCursorIndex());
+        int wordIndex = getLastWord(startToCursor);
+        ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
+        addCommandSpellcheckSuggestions(currentText, suggestions);
+        this.allSuggestions = suggestions;
+        return suggestMatching(wordIndex, startToCursor, suggestions, includePlayerFallback).join();
+    }
+
+    private void addCommandSpellcheckSuggestions(String currentText, List<AdvancedSuggestions> suggestions) {
+        int argumentsStart = getCommandSpellcheckStart(currentText);
+        if (argumentsStart < 0 || !shouldSpellcheckCommand(currentText)) {
+            return;
+        }
+        String arguments = currentText.substring(argumentsStart);
+        Optional<List<AdvancedSuggestions>> commandSuggestions = SpellCheckSuggestor.getInstance().suggest(arguments);
+        commandSuggestions.ifPresent(list -> {
+            for (AdvancedSuggestions advancedSuggestions : list) {
+                suggestions.add(offsetSuggestions(advancedSuggestions, argumentsStart));
+            }
+        });
+    }
+
+    private AdvancedSuggestions offsetSuggestions(AdvancedSuggestions suggestions, int offset) {
+        List<AdvancedSuggestion> offsetSuggestions = new ArrayList<>();
+        for (AdvancedSuggestion suggestion : suggestions.getSuggestions()) {
+            StringRange range = suggestion.getRange();
+            offsetSuggestions.add(new AdvancedSuggestion(new StringRange(range.getStart() + offset,
+                    range.getEnd() + offset), suggestion.getText(), suggestion.getRender(), suggestion.getTooltip()));
+        }
+        StringRange range = suggestions.getRange();
+        return new AdvancedSuggestions(new StringRange(range.getStart() + offset, range.getEnd() + offset),
+                offsetSuggestions);
+    }
+
+    private boolean shouldSpellcheckCommand(String currentText) {
+        String commandName = getCommandName(currentText);
+        if (commandName.isEmpty()) {
+            return false;
+        }
+        for (String configuredCommand : ChatBoxConfigStorage.General.getCommandSpellcheckCommands()) {
+            String normalized = ChatBoxConfigStorage.General.normalizeCommand(configuredCommand);
+            if (!normalized.isEmpty() && normalized.equals(commandName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String getCommandName(String currentText) {
+        if (Strings.isNullOrEmpty(currentText) || currentText.charAt(0) != '/') {
+            return "";
+        }
+        int end = 1;
+        while (end < currentText.length() && !Character.isWhitespace(currentText.charAt(end))) {
+            end++;
+        }
+        return ChatBoxConfigStorage.General.normalizeCommand(currentText.substring(1, end));
+    }
+
+    private static int getCommandArgumentsStart(String currentText) {
+        if (Strings.isNullOrEmpty(currentText) || currentText.charAt(0) != '/') {
+            return -1;
+        }
+        int index = 1;
+        while (index < currentText.length() && !Character.isWhitespace(currentText.charAt(index))) {
+            index++;
+        }
+        while (index < currentText.length() && Character.isWhitespace(currentText.charAt(index))) {
+            index++;
+        }
+        return index < currentText.length() ? index : -1;
+    }
+
+    private static int getCommandSpellcheckStart(String currentText) {
+        return getCommandArgumentsStart(currentText);
     }
 
     /**
@@ -132,6 +247,11 @@ public class ChatSuggestor {
 
     /** Update's suggestions specifically for chat (not command). */
     public void updateChatSuggestions() {
+        updateChatSuggestions(false);
+    }
+
+    /** Update's suggestions specifically for chat (not command). */
+    public void updateChatSuggestions(boolean includePlayers) {
         String startToCursor = textField.getText().substring(0, getCursorIndex());
         int wordIndex = getLastWord(startToCursor);
         ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
@@ -144,7 +264,7 @@ public class ChatSuggestor {
             suggestion.ifPresent(suggestions::addAll);
         }
         this.allSuggestions = suggestions;
-        this.pendingSuggestions = suggestMatching(wordIndex, startToCursor, suggestions);
+        this.pendingSuggestions = suggestMatching(wordIndex, startToCursor, suggestions, includePlayers);
     }
 
     /**
@@ -157,11 +277,19 @@ public class ChatSuggestor {
      */
     private CompletableFuture<AdvancedSuggestions> suggestMatching(int start, String input,
             List<AdvancedSuggestions> other) {
+        return suggestMatching(start, input, other, true);
+    }
+
+    private CompletableFuture<AdvancedSuggestions> suggestMatching(int start, String input,
+            List<AdvancedSuggestions> other, boolean includePlayers) {
         List<AdvancedSuggestion> newSuggestions = new ArrayList<>();
         String lastWord = input.substring(start);
         StringRange r = new StringRange(start, input.length());
         for (ChatSuggestorRegistry.ChatSuggestorOption option : ChatSuggestorRegistry.getInstance().getAll()) {
             if (!option.isActive()) {
+                continue;
+            }
+            if (!includePlayers && option.saveString.equals(PLAYER_SUGGESTOR)) {
                 continue;
             }
             Optional<List<AdvancedSuggestion>> s = option.getOption().suggestCurrentWord(lastWord, r);

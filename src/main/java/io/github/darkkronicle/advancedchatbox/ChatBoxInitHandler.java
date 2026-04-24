@@ -12,6 +12,7 @@ import fi.dy.masa.malilib.interfaces.IInitializationHandler;
 import io.github.darkkronicle.advancedchatbox.chat.ChatBoxSection;
 import io.github.darkkronicle.advancedchatbox.config.ChatBoxConfigStorage;
 import io.github.darkkronicle.advancedchatbox.config.GuiChatBoxConfig;
+import io.github.darkkronicle.advancedchatbox.config.gui.CommandSpellcheckScreen;
 import io.github.darkkronicle.advancedchatbox.formatter.ColorCodeFormatter;
 import io.github.darkkronicle.advancedchatbox.formatter.CommandColorer;
 import io.github.darkkronicle.advancedchatbox.formatter.JSONFormatter;
@@ -42,6 +43,11 @@ public class ChatBoxInitHandler implements IInitializationHandler {
                         "spellchecker",
                         "advancedchatbox.config.tab.spellchecker",
                         ChatBoxConfigStorage.SpellChecker.OPTIONS
+                ),
+                GuiConfigHandler.wrapScreen(
+                        "command_spellcheck",
+                        "advancedchatbox.config.tab.commandspellcheck",
+                        CommandSpellcheckScreen::new
                 )
         ));
 

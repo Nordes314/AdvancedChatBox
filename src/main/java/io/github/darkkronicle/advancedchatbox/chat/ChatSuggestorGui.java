@@ -9,6 +9,7 @@ package io.github.darkkronicle.advancedchatbox.chat;
 
 import com.google.common.collect.Lists;
 import com.mojang.brigadier.Message;
+import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.context.CommandContextBuilder;
 import com.mojang.brigadier.context.SuggestionContext;
@@ -66,6 +67,7 @@ public class ChatSuggestorGui {
 
     private boolean windowActive;
     private boolean completingSuggestions;
+    private boolean showSuggestionsWhenReady;
 
     private final ChatFormatter formatter;
     private final ChatSuggestor suggestor;
@@ -98,7 +100,24 @@ public class ChatSuggestorGui {
             return true;
         }
         if (this.owner.getFocused() == this.textField && input.key() == KeyCodes.KEY_TAB) {
+            this.windowActive = true;
+            this.showSuggestionsWhenReady = true;
+            if (isCommand(this.textField.getText())) {
+                if (this.suggestor.updateCommandSpellcheckSuggestions()) {
+                    this.showSuggestions(true);
+                    this.showSuggestionsWhenReady = false;
+                    return true;
+                }
+                this.suggestor.updateCommandSuggestions(true, () -> this.client.execute(() -> {
+                    if (this.showSuggestionsWhenReady && this.suggestor.isDone()) {
+                        this.showIfActive(true);
+                    }
+                }));
+                return true;
+            }
+            this.suggestor.updateChatSuggestions(true);
             this.showSuggestions(true);
+            this.showSuggestionsWhenReady = false;
             return true;
         }
         return false;
@@ -159,14 +178,19 @@ public class ChatSuggestorGui {
             // Index 1 will enforce that the player typed at LEAST ONE character
             if ((this.suggestingWhenEmpty || cursorIndex >= stringReader.getCursor())
                     && (this.window == null || !this.completingSuggestions)) {
+                if (this.suggestor.updateCommandSpellcheckSuggestions()) {
+                    this.showSuggestions(false);
+                    this.showSuggestionsWhenReady = false;
+                    return;
+                }
                 this.suggestor.updateCommandSuggestions(() -> {
                     if (this.suggestor.isDone()) {
-                        this.showIfActive();
+                        this.client.execute(() -> this.showIfActive(true));
                     }
                 });
             }
         } else {
-            this.suggestor.updateChatSuggestions();
+            this.suggestor.updateChatSuggestions(false);
             if (this.windowActive && this.suggestor.isDone()) {
                 this.showSuggestions(false);
             }
@@ -181,13 +205,25 @@ public class ChatSuggestorGui {
                         .asOrderedText();
     }
 
-    private void showIfActive() {
+    private void showIfActive(boolean autoShow) {
+        ParseResults<ClientCommandSource> parse = this.suggestor.getParse();
+        if (parse == null) {
+            this.x = 0;
+            this.width = this.owner.width;
+            this.window = null;
+            if (autoShow || this.windowActive) {
+                this.showSuggestions(false);
+            }
+            this.showSuggestionsWhenReady = false;
+            return;
+        }
+
         if (this.textField.getCursor() == this.textField.getText().length()) {
-            if (this.suggestor.getSuggestions().isEmpty() && !this.suggestor.getParse().getExceptions().isEmpty()) {
+            if (this.suggestor.getSuggestions().isEmpty() && !parse.getExceptions().isEmpty()) {
                 int builtInExceptions = 0;
 
-                for (Map.Entry<CommandNode<ClientCommandSource>, CommandSyntaxException> commandNodeCommandSyntaxExceptionEntry : this.suggestor
-                        .getParse().getExceptions().entrySet()) {
+                for (Map.Entry<CommandNode<ClientCommandSource>, CommandSyntaxException> commandNodeCommandSyntaxExceptionEntry : parse
+                        .getExceptions().entrySet()) {
                     CommandSyntaxException commandSyntaxException = commandNodeCommandSyntaxExceptionEntry.getValue();
                     if (commandSyntaxException.getType() == CommandSyntaxException.BUILT_IN_EXCEPTIONS
                             .literalIncorrect()) {
@@ -201,8 +237,8 @@ public class ChatSuggestorGui {
                     this.messages.add(formatException(
                             CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand().create()));
                 }
-            } else if (this.suggestor.getParse().getReader().canRead()) {
-                this.messages.add(formatException(CommandManager.getException(this.suggestor.getParse())));
+            } else if (parse.getReader().canRead()) {
+                this.messages.add(formatException(CommandManager.getException(parse)));
             }
         }
         this.x = 0;
@@ -211,12 +247,20 @@ public class ChatSuggestorGui {
             this.showUsages(Formatting.GRAY);
         }
         this.window = null;
-        if (this.windowActive) {
+        if (autoShow || this.windowActive) {
             this.showSuggestions(false);
         }
+        this.showSuggestionsWhenReady = false;
+    }
+
+    private static boolean isCommand(String currentText) {
+        return !currentText.isEmpty() && currentText.charAt(0) == '/';
     }
 
     private void showUsages(Formatting formatting) {
+        if (this.suggestor.getParse() == null) {
+            return;
+        }
         CommandContextBuilder<ClientCommandSource> commandContextBuilder = this.suggestor.getParse().getContext();
         SuggestionContext<ClientCommandSource> suggestionContext =
                 commandContextBuilder.findSuggestionContext(this.textField.getCursor());
