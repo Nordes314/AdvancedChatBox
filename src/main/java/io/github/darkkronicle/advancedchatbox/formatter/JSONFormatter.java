@@ -20,11 +20,11 @@ import lombok.AllArgsConstructor;
 import lombok.Value;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.command.CommandSource;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
 
 @Environment(EnvType.CLIENT)
 public class JSONFormatter implements IMessageFormatter {
@@ -62,7 +62,7 @@ public class JSONFormatter implements IMessageFormatter {
     }
 
     @Override
-    public Optional<Text> format(Text text, @Nullable ParseResults<ClientCommandSource> parse) {
+    public Optional<Component> format(Component text, @Nullable ParseResults<ClientSuggestionProvider> parse) {
         String content = text.getString();
         Optional<List<StringMatch>> omatches = SearchUtils.findMatches(content, "\\{.+\\}", FindType.REGEX);
         if (!omatches.isPresent()) {
@@ -77,7 +77,7 @@ public class JSONFormatter implements IMessageFormatter {
         return Optional.of(text);
     }
 
-    public MutableText colorJson(String string) {
+    public MutableComponent colorJson(String string) {
         TextBuilder text = new TextBuilder();
         for (JSONToken token : parseJson(string)) {
             text.append(token.match.match, Style.EMPTY.withColor(token.type.color.color()));

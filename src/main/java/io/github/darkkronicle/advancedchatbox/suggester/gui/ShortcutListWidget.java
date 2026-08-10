@@ -12,7 +12,7 @@ import io.github.darkkronicle.advancedchatbox.suggester.ShortcutSuggestor;
 import io.github.darkkronicle.advancedchatcore.gui.WidgetConfigList;
 import java.util.Collection;
 import javax.annotation.Nullable;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 public class ShortcutListWidget extends WidgetConfigList<ShortcutSuggestor.Shortcut, ShortcutEntryListWidget> {
     public final ShortcutSuggestor suggestor;

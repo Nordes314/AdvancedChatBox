@@ -19,9 +19,10 @@ import java.util.Optional;
 import io.github.darkkronicle.advancedchatcore.util.TextUtil;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.*;
-import net.minecraft.util.Formatting;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.network.chat.*;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.ChatFormatting;
 
 /**
  * A class to format the chat box on the
@@ -32,12 +33,12 @@ public class ChatFormatter {
     private String current = null;
 
     /** The formatted current */
-    private Text last = null;
+    private Component last = null;
 
-    private final TextFieldWidget widget;
+    private final EditBox widget;
     private final ChatSuggestor suggestor;
 
-    public ChatFormatter(TextFieldWidget widget, ChatSuggestor suggestor) {
+    public ChatFormatter(EditBox widget, ChatSuggestor suggestor) {
         this.widget = widget;
         this.suggestor = suggestor;
     }
@@ -48,8 +49,8 @@ public class ChatFormatter {
      * @param string Contents
      * @return Formatted FluidText. If nothing is changed it will be the contents with Style.EMPTY
      */
-    public Text format(String string) {
-        Text text = Text.literal(string);
+    public Component format(String string) {
+        Component text = Component.literal(string);
         if (string.length() == 0) {
             return text;
         }
@@ -82,11 +83,11 @@ public class ChatFormatter {
                 String matchString = string.subSequence(start, end).toString();
                 format.put(new StringMatch(matchString, start, end), (current, match) -> {
                     Style style = Style.EMPTY;
-                    style = style.withFormatting(Formatting.UNDERLINE);
+                    style = style.applyFormat(ChatFormatting.UNDERLINE);
                     TextColor textColor = TextColor
                             .fromRgb(ChatBoxConfigStorage.General.AVAILABLE_SUGGESTION_COLOR.config.getIntegerValue());
                     style = style.withColor(textColor);
-                    return Text.literal(matchString).fillStyle(style);
+                    return Component.literal(matchString).withStyle(style);
                 });
             }
             text = TextUtil.replaceStrings(text, format);
@@ -95,7 +96,7 @@ public class ChatFormatter {
             if (!option.isActive()) {
                 continue;
             }
-            Optional<Text> otext = option.getOption().format(text, suggestor.getParse());
+            Optional<Component> otext = option.getOption().format(text, suggestor.getParse());
             if (otext.isPresent()) {
                 text = otext.get();
             }
@@ -103,13 +104,13 @@ public class ChatFormatter {
         return text;
     }
 
-    private OrderedText set(String s, Integer integer) {
+    private FormattedCharSequence set(String s, Integer integer) {
         int length = s.length();
         if (length == 0) {
-            return OrderedText.EMPTY;
+            return FormattedCharSequence.EMPTY;
         }
         if (last.getString().length() == 0) {
-            return OrderedText.EMPTY;
+            return FormattedCharSequence.EMPTY;
         }
         int start = integer;
         int end = integer + length;
@@ -117,11 +118,11 @@ public class ChatFormatter {
         if (end > fluidLength) {
             end = fluidLength;
         }
-        return TextUtil.truncate(last, new StringMatch(s, start, end)).asOrderedText();
+        return TextUtil.truncate(last, new StringMatch(s, start, end)).getVisualOrderText();
     }
 
-    public OrderedText apply(String s, Integer integer) {
-        String text = widget.getText();
+    public FormattedCharSequence apply(String s, Integer integer) {
+        String text = widget.getValue();
         if (text.equals(current)) {
             // If the content hasn't changed, use the previous one.
             return set(s, integer);

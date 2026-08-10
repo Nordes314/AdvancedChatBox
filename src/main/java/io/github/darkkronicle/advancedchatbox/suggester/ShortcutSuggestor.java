@@ -37,9 +37,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
 
 @Environment(EnvType.CLIENT)
 public class ShortcutSuggestor implements IMessageSuggestor, IJsonApplier, IScreenSupplier {
@@ -137,7 +137,7 @@ public class ShortcutSuggestor implements IMessageSuggestor, IJsonApplier, IScre
             if (current.length() == 0 || shortcut.name.toLowerCase().startsWith(current.toLowerCase())) {
                 TextBuilder text = new TextBuilder();
                 text.append(shortcut.name);
-                suggestions.add(new AdvancedSuggestion(range, shortcut.replace, text.build(), Text.literal(shortcut.replace)));
+                suggestions.add(new AdvancedSuggestion(range, shortcut.replace, text.build(), Component.literal(shortcut.replace)));
             }
         }
         return suggestions;

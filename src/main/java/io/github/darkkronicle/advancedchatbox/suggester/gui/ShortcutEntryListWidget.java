@@ -20,9 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 @Environment(EnvType.CLIENT)
 public class ShortcutEntryListWidget extends WidgetConfigListEntry<ShortcutSuggestor.Shortcut> {
@@ -45,17 +45,17 @@ public class ShortcutEntryListWidget extends WidgetConfigListEntry<ShortcutSugge
         pos -= removeWidth;
         int replaceWidth = width - removeWidth - nameWidth + 1;
         GuiTextFieldGeneric replaceField = new GuiTextFieldGeneric(pos - replaceWidth, y, replaceWidth, 20,
-                MinecraftClient.getInstance().textRenderer);
+                Minecraft.getInstance().font);
         replaceField.setMaxLength(512);
-        replaceField.setText(entry.getReplace());
+        replaceField.setValue(entry.getReplace());
         replace = new TextFieldWrapper<>(replaceField, new SaveListener(this, false));
         parent.addTextField(replace);
 
         pos -= replaceWidth + 1;
         GuiTextFieldGeneric nameField =
-                new GuiTextFieldGeneric(pos - nameWidth, y, nameWidth, 20, MinecraftClient.getInstance().textRenderer);
+                new GuiTextFieldGeneric(pos - nameWidth, y, nameWidth, 20, Minecraft.getInstance().font);
         nameField.setMaxLength(512);
-        nameField.setText(entry.getName());
+        nameField.setValue(entry.getName());
         name = new TextFieldWrapper<>(nameField, new SaveListener(this, true));
         texts.add(name);
         texts.add(replace);
@@ -79,9 +79,9 @@ public class ShortcutEntryListWidget extends WidgetConfigListEntry<ShortcutSugge
         @Override
         public boolean onTextChange(GuiTextFieldGeneric textField) {
             if (name) {
-                parent.entry.setName(textField.getText());
+                parent.entry.setName(textField.getValue());
             } else {
-                parent.entry.setReplace(textField.getText());
+                parent.entry.setReplace(textField.getValue());
             }
             return false;
         }

@@ -32,10 +32,10 @@ import java.util.regex.Pattern;
 import lombok.Getter;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.command.CommandSource;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.SharedSuggestionProvider;
 
 /** A maintainer of suggestions to suggest to the player. */
 @Environment(EnvType.CLIENT)
@@ -45,7 +45,7 @@ public class ChatSuggestor {
 
     /** Parsed command results */
     @Getter
-    private ParseResults<ClientCommandSource> parse;
+    private ParseResults<ClientSuggestionProvider> parse;
 
     /** Suggestions to complete */
     @Getter
@@ -59,12 +59,12 @@ public class ChatSuggestor {
     @Getter
     private List<AdvancedSuggestions> allSuggestions;
 
-    private final TextFieldWidget textField;
-    private final MinecraftClient client;
+    private final EditBox textField;
+    private final Minecraft client;
 
-    public ChatSuggestor(TextFieldWidget textField) {
+    public ChatSuggestor(EditBox textField) {
         this.textField = textField;
-        this.client = MinecraftClient.getInstance();
+        this.client = Minecraft.getInstance();
     }
 
     /**
@@ -111,7 +111,7 @@ public class ChatSuggestor {
 
     public void updateCommandSuggestions(boolean includePlayerFallback, Runnable after) {
         allSuggestions = null;
-        CommandDispatcher<ClientCommandSource> commandDispatcher = client.player.networkHandler.getCommandDispatcher();
+        CommandDispatcher<ClientSuggestionProvider> commandDispatcher = client.player.connection.getCommands();
         pendingSuggestions = commandDispatcher.getCompletionSuggestions(this.parse, getCursorIndex())
                 .thenApplyAsync(suggestions -> {
                     AdvancedSuggestions vanillaSuggestions = AdvancedSuggestions.fromSuggestions(suggestions);
@@ -136,7 +136,7 @@ public class ChatSuggestor {
     }
 
     private AdvancedSuggestions getCommandSpellcheckSuggestions() {
-        String currentText = textField.getText();
+        String currentText = textField.getValue();
         String startToCursor = currentText.substring(0, getCursorIndex());
         int wordIndex = getLastWord(startToCursor);
         ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
@@ -146,7 +146,7 @@ public class ChatSuggestor {
     }
 
     private AdvancedSuggestions getCommandFallbackSuggestions(boolean includePlayerFallback) {
-        String currentText = textField.getText();
+        String currentText = textField.getValue();
         String startToCursor = currentText.substring(0, getCursorIndex());
         int wordIndex = getLastWord(startToCursor);
         ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
@@ -230,9 +230,9 @@ public class ChatSuggestor {
      * @param stringReader StringReader which contains reading string
      */
     public void updateParse(StringReader stringReader) {
-        CommandDispatcher<ClientCommandSource> commandDispatcher = client.player.networkHandler.getCommandDispatcher();
+        CommandDispatcher<ClientSuggestionProvider> commandDispatcher = client.player.connection.getCommands();
         if (parse == null) {
-            parse = commandDispatcher.parse(stringReader, client.player.networkHandler.getCommandSource());
+            parse = commandDispatcher.parse(stringReader, client.player.connection.getSuggestionsProvider());
         }
     }
 
@@ -242,7 +242,7 @@ public class ChatSuggestor {
      * @return Cursor index
      */
     private int getCursorIndex() {
-        return textField.getCursor();
+        return textField.getCursorPosition();
     }
 
     /** Update's suggestions specifically for chat (not command). */
@@ -252,7 +252,7 @@ public class ChatSuggestor {
 
     /** Update's suggestions specifically for chat (not command). */
     public void updateChatSuggestions(boolean includePlayers) {
-        String startToCursor = textField.getText().substring(0, getCursorIndex());
+        String startToCursor = textField.getValue().substring(0, getCursorIndex());
         int wordIndex = getLastWord(startToCursor);
         ArrayList<AdvancedSuggestions> suggestions = new ArrayList<>();
         for (ChatSuggestorRegistry.ChatSuggestorOption option : ChatSuggestorRegistry.getInstance().getAll()) {
@@ -260,7 +260,7 @@ public class ChatSuggestor {
                 continue;
             }
             IMessageSuggestor suggestor = option.getOption();
-            Optional<List<AdvancedSuggestions>> suggestion = suggestor.suggest(textField.getText());
+            Optional<List<AdvancedSuggestions>> suggestion = suggestor.suggest(textField.getValue());
             suggestion.ifPresent(suggestions::addAll);
         }
         this.allSuggestions = suggestions;
@@ -297,8 +297,8 @@ public class ChatSuggestor {
         }
 
         for (AdvancedSuggestions suggestions : other) {
-            if (suggestions.getRange().getStart() <= textField.getCursor()
-                    && suggestions.getRange().getEnd() >= textField.getCursor()) {
+            if (suggestions.getRange().getStart() <= textField.getCursorPosition()
+                    && suggestions.getRange().getEnd() >= textField.getCursorPosition()) {
                 newSuggestions.addAll(suggestions.getSuggestions());
             }
         }
@@ -391,7 +391,7 @@ public class ChatSuggestor {
      * @return Ordered suggestions
      */
     private List<AdvancedSuggestion> orderSuggestions(List<AdvancedSuggestion> suggestions) {
-        String string = this.textField.getText().substring(0, this.textField.getCursor());
+        String string = this.textField.getValue().substring(0, this.textField.getCursorPosition());
         String lastWord = string.substring(getLastWord(string)).toLowerCase(Locale.ROOT);
         List<AdvancedSuggestion> minecraftSuggestions = Lists.newArrayList();
         List<AdvancedSuggestion> otherSuggestions = Lists.newArrayList();

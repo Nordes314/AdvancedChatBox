@@ -38,11 +38,11 @@ import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.command.CommandSource;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
 
 @Environment(EnvType.CLIENT)
 public class CommandColorer implements IMessageFormatter, IJsonApplier, IScreenSupplier {
@@ -58,14 +58,14 @@ public class CommandColorer implements IMessageFormatter, IJsonApplier, IScreenS
     }
 
     @Override
-    public Optional<Text> format(Text text, @Nullable ParseResults<ClientCommandSource> parse) {
+    public Optional<Component> format(Component text, @Nullable ParseResults<ClientSuggestionProvider> parse) {
         if (parse == null) {
             if (text.getString().charAt(0) == '/') {
-                return Optional.of(Text.literal(text.getString()).fillStyle(Style.EMPTY.withColor(CommandColorerStorage.ERROR_COLOR.config.getIntegerValue())));
+                return Optional.of(Component.literal(text.getString()).withStyle(Style.EMPTY.withColor(CommandColorerStorage.ERROR_COLOR.config.getIntegerValue())));
             }
             return Optional.empty();
         }
-        CommandContextBuilder<ClientCommandSource> commandContextBuilder = parse.getContext().getLastChild();
+        CommandContextBuilder<ClientSuggestionProvider> commandContextBuilder = parse.getContext().getLastChild();
         HashMap<StringMatch, StringInsert> replace = new HashMap<>();
         int lowest = -1;
         int max = 0;
@@ -90,9 +90,9 @@ public class CommandColorer implements IMessageFormatter, IJsonApplier, IScreenS
             Color color = palette.getColors().get(index % palette.getColors().size());
             replace.put(match, (current, match1) -> {
                 if (current.getStyle().equals(Style.EMPTY)) {
-                    return Text.literal(match1.match).fillStyle(Style.EMPTY.withColor(color.color()));
+                    return Component.literal(match1.match).withStyle(Style.EMPTY.withColor(color.color()));
                 }
-                return Text.literal(match1.match).fillStyle(current.getStyle());
+                return Component.literal(match1.match).withStyle(current.getStyle());
             });
             index += 1;
         }
@@ -100,18 +100,18 @@ public class CommandColorer implements IMessageFormatter, IJsonApplier, IScreenS
         if (lowest > -1) {
             replace.put(new StringMatch(text.getString().substring(0, lowest), 0, lowest), (current, match) -> {
                 if (current.getStyle().equals(Style.EMPTY)) {
-                    return Text.literal(match.match).fillStyle(Style.EMPTY.withColor(CommandColorerStorage.COMMAND_COLOR.config.getIntegerValue()));
+                    return Component.literal(match.match).withStyle(Style.EMPTY.withColor(CommandColorerStorage.COMMAND_COLOR.config.getIntegerValue()));
                 }
-                return Text.literal(match.match).fillStyle(current.getStyle());
+                return Component.literal(match.match).withStyle(current.getStyle());
             });
         }
         if (max != string.length()) {
             replace.put(new StringMatch(text.getString().substring(max, string.length()), max, string.length()),
                     (current, match) -> {
                         if (current.getStyle().equals(Style.EMPTY)) {
-                            return Text.literal(match.match).fillStyle(Style.EMPTY.withColor(CommandColorerStorage.ERROR_COLOR.config.getIntegerValue()));
+                            return Component.literal(match.match).withStyle(Style.EMPTY.withColor(CommandColorerStorage.ERROR_COLOR.config.getIntegerValue()));
                         }
-                        return Text.literal(match.match).fillStyle(current.getStyle());
+                        return Component.literal(match.match).withStyle(current.getStyle());
                     });
         }
 
@@ -119,39 +119,39 @@ public class CommandColorer implements IMessageFormatter, IJsonApplier, IScreenS
         return Optional.of(text);
     }
 
-    private List<CommandSection<?>> compileObjects(ParseResults<ClientCommandSource> parse, String input) {
-        CommandContextBuilder<ClientCommandSource> commandContextBuilder = parse.getContext();
+    private List<CommandSection<?>> compileObjects(ParseResults<ClientSuggestionProvider> parse, String input) {
+        CommandContextBuilder<ClientSuggestionProvider> commandContextBuilder = parse.getContext();
         List<CommandSection<?>> sections = new ArrayList<>();
-        for (CommandContextBuilder<ClientCommandSource> child : getAllChildren(commandContextBuilder)) {
+        for (CommandContextBuilder<ClientSuggestionProvider> child : getAllChildren(commandContextBuilder)) {
             sections.addAll(addSubs(child, input));
             sections.addAll(addArgs(child, input));
         }
         return sections;
     }
 
-    private List<CommandSection<ParsedCommandNode<ClientCommandSource>>> addSubs(CommandContextBuilder<ClientCommandSource> context,
+    private List<CommandSection<ParsedCommandNode<ClientSuggestionProvider>>> addSubs(CommandContextBuilder<ClientSuggestionProvider> context,
             String input) {
-        List<CommandSection<ParsedCommandNode<ClientCommandSource>>> nodes = new ArrayList<>();
-        for (ParsedCommandNode<ClientCommandSource> node : context.getNodes()) {
+        List<CommandSection<ParsedCommandNode<ClientSuggestionProvider>>> nodes = new ArrayList<>();
+        for (ParsedCommandNode<ClientSuggestionProvider> node : context.getNodes()) {
             nodes.add(new CommandSection<>(node, fromRange(node.getRange(), input), CommandSection.Section.COMMAND));
         }
         return nodes;
     }
 
-    private List<CommandSection<ParsedArgument<ClientCommandSource, ?>>> addArgs(CommandContextBuilder<ClientCommandSource> context,
+    private List<CommandSection<ParsedArgument<ClientSuggestionProvider, ?>>> addArgs(CommandContextBuilder<ClientSuggestionProvider> context,
             String input) {
-        List<CommandSection<ParsedArgument<ClientCommandSource, ?>>> nodes = new ArrayList<>();
+        List<CommandSection<ParsedArgument<ClientSuggestionProvider, ?>>> nodes = new ArrayList<>();
         if (context.getArguments() == null) {
             return nodes;
         }
-        for (ParsedArgument<ClientCommandSource, ?> node : context.getArguments().values()) {
+        for (ParsedArgument<ClientSuggestionProvider, ?> node : context.getArguments().values()) {
             nodes.add(new CommandSection<>(node, fromRange(node.getRange(), input), CommandSection.Section.ARGUMENT));
         }
         return nodes;
     }
 
-    private List<CommandContextBuilder<ClientCommandSource>> getAllChildren(CommandContextBuilder<ClientCommandSource> context) {
-        List<CommandContextBuilder<ClientCommandSource>> children = new ArrayList<>();
+    private List<CommandContextBuilder<ClientSuggestionProvider>> getAllChildren(CommandContextBuilder<ClientSuggestionProvider> context) {
+        List<CommandContextBuilder<ClientSuggestionProvider>> children = new ArrayList<>();
         while (context != null) {
             children.add(context);
             context = context.getChild();

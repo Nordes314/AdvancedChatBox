@@ -11,8 +11,8 @@ import fi.dy.masa.malilib.gui.interfaces.ISelectionListener;
 import io.github.darkkronicle.advancedchatcore.gui.WidgetConfigList;
 import java.util.Collection;
 import javax.annotation.Nullable;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 
 public class CommandSpellcheckListWidget
         extends WidgetConfigList<CommandSpellcheckEntry, CommandSpellcheckEntryWidget> {
@@ -33,7 +33,7 @@ public class CommandSpellcheckListWidget
     }
 
     @Override
-    public boolean onKeyTyped(KeyInput input) {
+    public boolean onKeyTyped(KeyEvent input) {
         boolean value = super.onKeyTyped(input);
         save();
         return value;
