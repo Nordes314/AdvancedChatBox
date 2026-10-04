@@ -11,9 +11,9 @@ import com.mojang.brigadier.ParseResults;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
-import net.minecraft.client.network.ClientCommandSource;
-import net.minecraft.command.CommandSource;
-import net.minecraft.text.Text;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.network.chat.Component;
 
 /** An interface for formatting the chat text box on the chat screen. */
 public interface IMessageFormatter {
@@ -22,7 +22,7 @@ public interface IMessageFormatter {
      *
      * @param text Current text that will be rendered
      * @param parse Current commands that have been parsed
-     * @return Text that should render on the chat text bar. If empty it won't modify.
+     * @return Component that should render on the chat text bar. If empty it won't modify.
      */
-    Optional<Text> format(Text text, @Nullable ParseResults<ClientCommandSource> parse);
+    Optional<Component> format(Component text, @Nullable ParseResults<ClientSuggestionProvider> parse);
 }

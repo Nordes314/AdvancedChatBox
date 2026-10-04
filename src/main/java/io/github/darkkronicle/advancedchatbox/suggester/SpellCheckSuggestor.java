@@ -24,8 +24,8 @@ import java.util.List;
 import java.util.Optional;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
 import org.languagetool.JLanguageTool;
 import org.languagetool.ResultCache;
 import org.languagetool.UserConfig;
@@ -43,6 +43,12 @@ public class SpellCheckSuggestor implements IMessageSuggestor {
     }
 
     private SpellCheckSuggestor() {
+        // LanguageTool's en/grammar.xml trips the JDK's XML entity-size hardening
+        // (JAXP00010004) on Java 25, so loading its rules threw and took the whole mod
+        // down with it. The file ships inside the mod, so lifting the limit is safe.
+        if (System.getProperty("jdk.xml.totalEntitySizeLimit") == null) {
+            System.setProperty("jdk.xml.totalEntitySizeLimit", "0");
+        }
         lt = new JLanguageTool(new AmericanEnglish(), new AmericanEnglish(), new ResultCache(15),
                 new UserConfig(new ArrayList<>(), new HashMap<>(), 20));
         lt.setMaxErrorsPerWordRate(0.33f);
@@ -81,19 +87,19 @@ public class SpellCheckSuggestor implements IMessageSuggestor {
         return replacements;
     }
 
-    private static Text getHover(String message) {
+    private static Component getHover(String message) {
         String text = ChatBoxConfigStorage.SpellChecker.HOVER_TEXT.config.getStringValue();
         text = text.replaceAll("&", "§");
         Optional<StringMatch> match = SearchUtils.getMatch(message, "<suggestion>(.+)</suggestion>", FindType.REGEX);
         if (match.isEmpty()) {
             text = text.replaceAll("\\$1", message).replaceAll("\\$2", "").replaceAll("\\$3", "");
-            return StyleFormatter.formatText(Text.literal(text));
+            return StyleFormatter.formatText(Component.literal(text));
         }
         StringMatch stringMatch = match.get();
         String start = message.substring(0, stringMatch.start);
         String end = message.substring(stringMatch.end);
         String middle = message.substring(stringMatch.start + 12, stringMatch.end - 13);
         text = text.replaceAll("\\$1", start).replaceAll("\\$2", middle).replaceAll("\\$3", end);
-        return StyleFormatter.formatText(Text.literal(text));
+        return StyleFormatter.formatText(Component.literal(text));
     }
 }

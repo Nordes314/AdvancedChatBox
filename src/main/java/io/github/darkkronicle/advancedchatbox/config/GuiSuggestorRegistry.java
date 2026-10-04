@@ -14,7 +14,7 @@ import io.github.darkkronicle.advancedchatcore.config.gui.widgets.WidgetRegistry
 import io.github.darkkronicle.advancedchatcore.gui.CoreGuiListBase;
 import io.github.darkkronicle.advancedchatcore.gui.buttons.BackButtonListener;
 import io.github.darkkronicle.advancedchatcore.gui.buttons.NamedSimpleButton;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screens.Screen;
 
 public class GuiSuggestorRegistry extends
         CoreGuiListBase<ChatSuggestorRegistry.ChatSuggestorOption, WidgetRegistryOptionEntry<ChatSuggestorRegistry.ChatSuggestorOption>, WidgetListRegistryOption<ChatSuggestorRegistry.ChatSuggestorOption>> {

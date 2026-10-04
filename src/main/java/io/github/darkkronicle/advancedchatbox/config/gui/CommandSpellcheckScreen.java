@@ -17,8 +17,8 @@ import io.github.darkkronicle.advancedchatcore.gui.CoreGuiListBase;
 import io.github.darkkronicle.advancedchatcore.gui.buttons.NamedSimpleButton;
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 
 public class CommandSpellcheckScreen
         extends CoreGuiListBase<CommandSpellcheckEntry, CommandSpellcheckEntryWidget, CommandSpellcheckListWidget> {
@@ -61,7 +61,7 @@ public class CommandSpellcheckScreen
     }
 
     @Override
-    public boolean onKeyTyped(KeyInput input) {
+    public boolean onKeyTyped(KeyEvent input) {
         if (input.key() == KeyCodes.KEY_ESCAPE) {
             closeGui(false);
             return true;

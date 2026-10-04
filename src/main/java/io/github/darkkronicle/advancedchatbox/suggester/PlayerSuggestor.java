@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Optional;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.PlayerListEntry;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
 
 @Environment(EnvType.CLIENT)
 public class PlayerSuggestor implements IMessageSuggestor {
@@ -41,16 +41,16 @@ public class PlayerSuggestor implements IMessageSuggestor {
     private Collection<String> getPlayerNames() {
         List<String> list = new ArrayList<>();
 
-        for (PlayerListEntry playerListEntry : MinecraftClient.getInstance().player.networkHandler.getPlayerList()) {
+        for (PlayerInfo playerListEntry : Minecraft.getInstance().player.connection.getOnlinePlayers()) {
 
             //checking if player name is empty, to avoid fake players
             if (playerListEntry.getProfile().name().equals("")) continue;
 
             if (ChatBoxConfigStorage.General.PRUNE_PLAYER_SUGGESTIONS.config.getBooleanValue()
-                    && playerListEntry.getDisplayName() != null) {
+                    && playerListEntry.getTabListDisplayName() != null) {
                 // Try to get their actual name (without prefix)
                 StringMatch match = SearchUtils
-                        .getMatch(playerListEntry.getDisplayName().getString(),
+                        .getMatch(playerListEntry.getTabListDisplayName().getString(),
                                 ConfigStorage.General.MESSAGE_OWNER_REGEX.config.getStringValue(), FindType.REGEX)
                         .orElse(null);
                 if (match != null) {
@@ -60,8 +60,8 @@ public class PlayerSuggestor implements IMessageSuggestor {
                     }
                 } else {
                     // Check to make sure it isn't blank
-                    if (!playerListEntry.getDisplayName().getString().equals("")) {
-                        list.add(playerListEntry.getDisplayName().getString());
+                    if (!playerListEntry.getTabListDisplayName().getString().equals("")) {
+                        list.add(playerListEntry.getTabListDisplayName().getString());
                     }
                 }
             } else {

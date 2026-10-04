@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 @Environment(EnvType.CLIENT)
 public class CommandSpellcheckEntryWidget extends WidgetConfigListEntry<CommandSpellcheckEntry> {
@@ -44,9 +44,9 @@ public class CommandSpellcheckEntryWidget extends WidgetConfigListEntry<CommandS
         pos -= removeWidth;
 
         GuiTextFieldGeneric commandField = new GuiTextFieldGeneric(x, y, pos - x, 20,
-                MinecraftClient.getInstance().textRenderer);
+                Minecraft.getInstance().font);
         commandField.setMaxLength(128);
-        commandField.setText(entry.getCommand());
+        commandField.setValue(entry.getCommand());
         command = new TextFieldWrapper<>(commandField, new SaveListener(this));
         texts.add(command);
         parent.addTextField(command);
@@ -63,7 +63,7 @@ public class CommandSpellcheckEntryWidget extends WidgetConfigListEntry<CommandS
     }
 
     public void save() {
-        entry.setCommand(ChatBoxConfigStorage.General.normalizeCommand(command.textField().getText()));
+        entry.setCommand(ChatBoxConfigStorage.General.normalizeCommand(command.textField().getValue()));
     }
 
     private static class SaveListener implements ITextFieldListener<GuiTextFieldGeneric> {
@@ -75,7 +75,7 @@ public class CommandSpellcheckEntryWidget extends WidgetConfigListEntry<CommandS
 
         @Override
         public boolean onTextChange(GuiTextFieldGeneric textField) {
-            parent.entry.setCommand(textField.getText());
+            parent.entry.setCommand(textField.getValue());
             parent.parent.screen.saveCommands();
             return false;
         }
